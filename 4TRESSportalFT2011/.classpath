@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
+	<classpathentry kind="lib" path="C:/Users/psena/Documents/05-Dev/Java/external lib/4TRESS-7.0.2/jbossall-client.jar"/>
+	<classpathentry kind="lib" path="C:/Users/psena/Documents/05-Dev/Java/external lib/4TRESS-7.0.2/SS_4TRESS_PUBLIC_Client.jar"/>
+	<classpathentry kind="lib" path="C:/Users/psena/Documents/05-Dev/Java/external lib/log4j/log4j-1.2.14.jar"/>
+	<classpathentry kind="lib" path="C:/Users/psena/Documents/05-Dev/Java/external lib/BouncyCastle/bcprov-jdk15-141.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

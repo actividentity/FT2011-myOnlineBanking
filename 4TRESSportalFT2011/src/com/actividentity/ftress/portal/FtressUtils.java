@@ -277,7 +277,7 @@ public class FtressUtils {
 	    return alsi;
 	}
     public ALSI primaryAuthentication(SecurityDomain domain,String username,String password) throws PasswordExpiredException, AuthenticationTierException, ObjectNotFoundException, InvalidChannelException, SeedingException, InternalException, RemoteException, InvalidParameterException{
-	    return primaryAuthentication(domain,new ChannelCode("CH_DIRECT"),new AuthenticationTypeCode("AT_SYSLOG",false), username, password);
+	    return primaryAuthentication(domain,new ChannelCode("CH_DIRECT"),new AuthenticationTypeCode("AT_SYSPW",false), username, password);
 	}
 
     public ALSI verifyUserOTP(SecurityDomain domain,ALSI alsi,ChannelCode channel,AuthenticationTypeCode authenticationTypeCode,String username,String otp) throws ALSIInvalidException, ObjectNotFoundException, NoFunctionPrivilegeException, InvalidParameterException, InternalException, RemoteException, InvalidChannelException, AuthenticationTierException, DeviceAuthenticationException, SeedingException, DeviceException, PasswordExpiredException{

@@ -27,11 +27,14 @@ import com.aspace.ftress.interfaces70.ftress.DTO.AssetCode;
 import com.aspace.ftress.interfaces70.ftress.DTO.AssetSet;
 import com.aspace.ftress.interfaces70.ftress.DTO.Attribute;
 import com.aspace.ftress.interfaces70.ftress.DTO.AttributeTypeCode;
+import com.aspace.ftress.interfaces70.ftress.DTO.AuditSearchCriteria;
+import com.aspace.ftress.interfaces70.ftress.DTO.AuditSearchResults;
 import com.aspace.ftress.interfaces70.ftress.DTO.AuthenticationRequest;
 import com.aspace.ftress.interfaces70.ftress.DTO.AuthenticationRequestParameter;
 import com.aspace.ftress.interfaces70.ftress.DTO.AuthenticationResponse;
 import com.aspace.ftress.interfaces70.ftress.DTO.AuthenticationStatistics;
 import com.aspace.ftress.interfaces70.ftress.DTO.AuthenticationTypeCode;
+import com.aspace.ftress.interfaces70.ftress.DTO.AuthenticatorStatus;
 import com.aspace.ftress.interfaces70.ftress.DTO.AuthorisationRequest;
 import com.aspace.ftress.interfaces70.ftress.DTO.AuthorisationResponse;
 import com.aspace.ftress.interfaces70.ftress.DTO.ChannelCode;
@@ -50,6 +53,7 @@ import com.aspace.ftress.interfaces70.ftress.DTO.MDAuthenticator;
 import com.aspace.ftress.interfaces70.ftress.DTO.MDPrompt;
 import com.aspace.ftress.interfaces70.ftress.DTO.MDPromptCode;
 import com.aspace.ftress.interfaces70.ftress.DTO.Parameter;
+import com.aspace.ftress.interfaces70.ftress.DTO.Password;
 import com.aspace.ftress.interfaces70.ftress.DTO.SecurityDomain;
 import com.aspace.ftress.interfaces70.ftress.DTO.SeedPositions;
 import com.aspace.ftress.interfaces70.ftress.DTO.SessionTransferCode;
@@ -131,15 +135,14 @@ public class FtressUtils {
 	com.aspace.ftress.interfaces70.ejb.AuthorisationTransactionManager authorisationTransactionManager=null;
 	com.aspace.ftress.interfaces70.ejb.Auditor auditor=null;
 	com.aspace.ftress.interfaces70.ejb.FunctionManager functionManager=null;
+	com.aspace.ftress.interfaces70.ejb.CredentialManager credentialManager=null;
 	
 	final Logger log = Logger.getLogger("4TRESS_PORTAL");
 	
 	public static void main(String[] args) throws InternalException, RemoteException, PasswordExpiredException, AuthenticationTierException, ObjectNotFoundException, InvalidChannelException, SeedingException, InvalidParameterException, ALSIInvalidException, NoFunctionPrivilegeException, CreateDuplicateException, AuthenticatorException, ConstraintFailedException, DeviceAuthenticationException, DeviceException {
 		System.out.println("Starts");
 		FtressUtils ftressUtils = new FtressUtils();
-		ALSI alsi = ftressUtils.primaryPKIAuthentication(new SecurityDomain("FTRESS"),new ChannelCode("CH_DIRECT"),"system01","C:\\Users\\psena\\Documents\\01-Products\\10-4Tress AS\\EvalKit\\Certs\\4TClientCert.p12","actividentity");
-		
-		//ALSI alsi = ftressUtils.primaryAuthentication(new SecurityDomain("FTRESS"),"ftadmin","password01");
+		ALSI alsi = ftressUtils.primaryPKIAuthentication(new SecurityDomain("DOMAIN1"),new ChannelCode("CH_DIRECT"),"system01","C:\\Users\\psena\\Documents\\01-Products\\10-4Tress AS\\EvalKit\\Certs\\4TClientCert.p12","actividentity");
 
 		if(alsi!=null){
 			System.out.println("Primary Authentication Sucessful");
@@ -238,10 +241,15 @@ public class FtressUtils {
   	  	functionManager = FtressServiceFactory.getFunctionManagerEJB();
   	  	log.debug("[init] 4TRESS FunctionManager object...SUCCESS");
   	  	
+  	  	//getting the CredentialManager interface
+  	  	credentialManager = FtressServiceFactory.getCredentialManagerEJB();
+  	  	log.debug("[init] 4TRESS CredentialManager object...SUCCESS");
+  	  	
   	  	log.debug("[init] ==> Ends");
 	}
 	public ALSI primaryAuthentication(SecurityDomain domain,ChannelCode channel,AuthenticationTypeCode authenticationTypeCode,String username,String password) throws PasswordExpiredException, AuthenticationTierException, ObjectNotFoundException, InvalidChannelException, SeedingException, InternalException, RemoteException, InvalidParameterException{
     	UPAuthenticationRequest authenticationRequest=null;
+    	AuthenticationResponse authenticationResponse=null;
     	ALSI alsi=null;
 		
     	log.debug("[primaryAuthentication] ==> Starts");
@@ -250,7 +258,7 @@ public class FtressUtils {
 	    authenticationRequest.setPassword(password);
 	    authenticationRequest.setAuthenticationTypeCode(authenticationTypeCode);
 	    
-	    AuthenticationResponse authenticationResponse = authenticatorInterface.primaryAuthenticateUP(channel, authenticationRequest, domain);
+	    authenticationResponse = authenticatorInterface.primaryAuthenticateUP(channel,authenticationRequest, domain);
 	    if ( authenticationResponse.getResponse() == AuthenticationResponse.RESPONSE_AUTHENTICATION_SUCCEEDED )
 	    {
 	    	log.info("[primaryAuthentication] Primary login OK.");
@@ -269,7 +277,7 @@ public class FtressUtils {
 	    return alsi;
 	}
     public ALSI primaryAuthentication(SecurityDomain domain,String username,String password) throws PasswordExpiredException, AuthenticationTierException, ObjectNotFoundException, InvalidChannelException, SeedingException, InternalException, RemoteException, InvalidParameterException{
-	    return primaryAuthentication(domain,new ChannelCode("CH_DIRECT"),new AuthenticationTypeCode("AT_SYSPW",false), username, password);
+	    return primaryAuthentication(domain,new ChannelCode("CH_DIRECT"),new AuthenticationTypeCode("AT_SYSLOG",false), username, password);
 	}
 
     public ALSI verifyUserOTP(SecurityDomain domain,ALSI alsi,ChannelCode channel,AuthenticationTypeCode authenticationTypeCode,String username,String otp) throws ALSIInvalidException, ObjectNotFoundException, NoFunctionPrivilegeException, InvalidParameterException, InternalException, RemoteException, InvalidChannelException, AuthenticationTierException, DeviceAuthenticationException, SeedingException, DeviceException, PasswordExpiredException{
@@ -332,13 +340,13 @@ public class FtressUtils {
 		return palsi;
     }
 	
-    public ALSI verifyUserPassword(SecurityDomain domain,ALSI alsi,ChannelCode channel,AuthenticationTypeCode authenticationTypeCode, String username,String password,int[] seedPositions) throws ALSIInvalidException, ObjectNotFoundException, NoFunctionPrivilegeException, InvalidParameterException, InternalException, RemoteException, SeedingException, InvalidChannelException, PasswordExpiredException, AuthenticationTierException{
+    public AuthenticationResponse verifyUserPassword(SecurityDomain domain,ALSI alsi,ChannelCode channel,AuthenticationTypeCode authenticationTypeCode, String username,String password,int[] seedPositions) throws ALSIInvalidException, ObjectNotFoundException, NoFunctionPrivilegeException, InvalidParameterException, InternalException, RemoteException, SeedingException, InvalidChannelException, PasswordExpiredException, AuthenticationTierException{
     	log.debug("[verifyUserPassword] ==> Starts");
-		ALSI palsi=null;
 	    AuthenticationTypeCode userAuthType = null;
 		UserCode userCode= new UserCode(username);
 		log.debug("[verifyUserPassword] checking for UP");
 		UPAuthenticator[] userUPAuthenticator = null;
+		AuthenticationResponse userAuthenticationResponse = null;
 		userUPAuthenticator = authenticatorManagerInterface.getAllUPAuthenticatorsForUser(alsi, channel, userCode, domain);
 		
 		if (userUPAuthenticator != null){
@@ -347,7 +355,6 @@ public class FtressUtils {
 				userAuthType = userUPAuthenticator[0].getAuthenticationTypeCode();
 				log.debug("[verifyUserPassword] Found UP authenticator userAuthType: " + userAuthType.toString());
 				if(userAuthType.getCode().equals(authenticationTypeCode.getCode())){
-					AuthenticationResponse userAuthenticationResponse = null;
 					
 					log.debug("[verifyUserPassword] Verifying static password");
 			  		// do indirect UP authentication for user
@@ -363,7 +370,6 @@ public class FtressUtils {
 					
 		    		if ( userAuthenticationResponse.getResponse() == AuthenticationResponse.RESPONSE_AUTHENTICATION_SUCCEEDED ){
 		    			log.info("[verifyUserPassword] Authentication is OK");
-		         		palsi = userAuthenticationResponse.getAlsi();
 			        }else if (userAuthenticationResponse.getResponse() == AuthenticationResponse.RESPONSE_AUTHENTICATION_FAILED ){
 			        	log.info("[verifyUserPassword] Authentication is NOT OK");
 			        }else if (userAuthenticationResponse.getStatus()!=null && userAuthenticationResponse.getStatus().equals(AuthenticationResponse.EXPIRED)){
@@ -376,8 +382,56 @@ public class FtressUtils {
 		}
 		
 		log.debug("[verifyUserPassword] ==> Ends");
-		return palsi;
+		return userAuthenticationResponse;
 	}
+    
+    public AuthenticationResponse verifyUserPassword(SecurityDomain domain,ALSI alsi,ChannelCode channel,AuthenticationTypeCode authenticationTypeCode, String username,String password,int[] seedPositions, AuthenticationRequestParameter[] paramList) throws ALSIInvalidException, ObjectNotFoundException, NoFunctionPrivilegeException, InvalidParameterException, InternalException, RemoteException, SeedingException, InvalidChannelException, PasswordExpiredException, AuthenticationTierException{
+    	log.debug("[verifyUserPassword] ==> Starts");
+	    AuthenticationTypeCode userAuthType = null;
+		UserCode userCode= new UserCode(username);
+		log.debug("[verifyUserPassword] checking for UP");
+		UPAuthenticator[] userUPAuthenticator = null;
+		AuthenticationResponse userAuthenticationResponse = null;
+		userUPAuthenticator = authenticatorManagerInterface.getAllUPAuthenticatorsForUser(alsi, channel, userCode, domain);
+		
+		if (userUPAuthenticator != null){
+			for(int i=0;i<userUPAuthenticator.length;i++){
+				log.debug("[verifyUserPassword] Found UP authenticator: " + userUPAuthenticator.length);
+				userAuthType = userUPAuthenticator[0].getAuthenticationTypeCode();
+				log.debug("[verifyUserPassword] Found UP authenticator userAuthType: " + userAuthType.toString());
+				if(userAuthType.getCode().equals(authenticationTypeCode.getCode())){
+
+					log.debug("[verifyUserPassword] Verifying static password");
+			  		// do indirect UP authentication for user
+		    		UPAuthenticationRequest userAuthenticationRequest = new UPAuthenticationRequest();
+		    		userAuthenticationRequest.setUserCode(userCode);
+		    		userAuthenticationRequest.setPassword(password);
+		    		userAuthenticationRequest.setAuthenticationTypeCode(userAuthType);
+		    		userAuthenticationRequest.setParameters(paramList);
+		    		
+		    		if(seedPositions!=null){
+		    			userAuthenticationRequest.setSeedPositions(seedPositions);
+		    		}
+		    		userAuthenticationResponse = authenticatorInterface.indirectPrimaryAuthenticateUP(alsi, channel, userAuthenticationRequest, domain);
+					
+		    		if ( userAuthenticationResponse.getResponse() == AuthenticationResponse.RESPONSE_AUTHENTICATION_SUCCEEDED ){
+		    			log.info("[verifyUserPassword] Authentication is OK");
+		         	//	palsi = userAuthenticationResponse.getAlsi();
+			        }else if (userAuthenticationResponse.getResponse() == AuthenticationResponse.RESPONSE_AUTHENTICATION_FAILED ){
+			        	log.info("[verifyUserPassword] Authentication is NOT OK");
+			        }else if (userAuthenticationResponse.getStatus()!=null && userAuthenticationResponse.getStatus().equals(AuthenticationResponse.EXPIRED)){
+			        	log.info("[verifyUserPassword] Password Expired");
+			        }
+				}
+			}
+		}else{
+			log.info("[verifyUserPassword] No UP authenticator found");
+		}
+		
+		log.debug("[verifyUserPassword] ==> Ends");
+		return userAuthenticationResponse;
+	}
+    
     
     public ALSI verifyUserMD(SecurityDomain domain,ALSI alsi,ChannelCode channel,AuthenticationTypeCode authenticationTypeCode, String username,MDAuthenticationAnswer[] mdAuthenticationAnswers) throws ALSIInvalidException, SeedingException, InvalidChannelException, NoFunctionPrivilegeException, AuthenticationTierException, ObjectNotFoundException, RemoteException, InvalidParameterException, InternalException{
     	log.debug("[verifyUserMD] ==> Starts");
@@ -1466,5 +1520,55 @@ public class FtressUtils {
 		}
 		log.debug("[verifyUserResponse] ==> Ends");
 		return palsi;
+	}
+	
+	public Device addDevice(ALSI alsi, ChannelCode channel, Device device, SecurityDomain domain) throws NoFunctionPrivilegeException, DeviceException, ObjectNotFoundException, ALSIInvalidException, CreateDuplicateException, InternalException, RemoteException, InvalidParameterException
+	{
+
+		return  deviceManager.addDevice(alsi, channel, device, domain);
+	}
+	
+	public Device assignDeviceToUser(ALSI alsi, ChannelCode channel, DeviceId deviceId, UserCode userCode, SecurityDomain domain) throws ALSIInvalidException, DeviceException, NoFunctionPrivilegeException, ObjectNotFoundException, InvalidParameterException, InternalException, RemoteException
+	{
+		return deviceManager.assignDeviceToUser(alsi, channel, deviceId, userCode, domain);
+	}
+	
+	public void updateUserStatus(ALSI alsi, ChannelCode channel, String username, String status, SecurityDomain domain) throws ALSIInvalidException, ObjectNotFoundException, NoFunctionPrivilegeException, InvalidParameterException, InternalException, RemoteException
+	{
+		UserCode userCode = new UserCode();
+		userCode.setCode(username);
+		User user = new User();
+		user.setCode(userCode);
+		user.setStatus(status);
+		userManagerInterface.updateUserStatus(alsi, channel, user, domain);
+	}
+	
+	public void updateUPAuthenticatorStatus(ALSI alsi, ChannelCode channel, String username, AuthenticationTypeCode authenticationTypeCode, String status, SecurityDomain domain) throws ALSIInvalidException, ObjectNotFoundException, NoFunctionPrivilegeException, InvalidParameterException, InternalException, RemoteException, AuthenticatorException
+	{
+		UserCode userCode = new UserCode();
+		userCode.setCode(username);
+		AuthenticatorStatus authStatus = new AuthenticatorStatus();
+		authStatus.setStatus(status);
+
+		authenticatorManagerInterface.updateUPAuthenticatorStatus(alsi, channel, userCode, authenticationTypeCode, authStatus, domain);
+
+	}
+	
+	public AuditSearchResults searchAudit(ALSI alsi, ChannelCode channel, AuditSearchCriteria crit, SecurityDomain domain) throws ALSIInvalidException, ObjectNotFoundException, NoFunctionPrivilegeException, InvalidParameterException, InternalException, RemoteException
+	
+	{
+		return auditor.searchAuditLog(alsi, channel, crit, domain);
+	}
+	
+	
+	public void changeUserPassword(ALSI alsi, ChannelCode channel, String username, AuthenticationTypeCode authenticationTypeCode, String password, SecurityDomain domain ) throws ConstraintFailedException, NoFunctionPrivilegeException, ObjectNotFoundException, ALSIInvalidException, InvalidChannelException, InternalException, RemoteException, InvalidParameterException
+	{
+		Password pCode = new Password();
+		pCode.setPassword(password);
+		UserCode userCode = new UserCode();
+		userCode.setCode(username);
+
+		credentialManager.changeUserPassword(alsi, channel, userCode, authenticationTypeCode, pCode, new SecurityDomain("DOMAIN1"));
+
 	}
 }
